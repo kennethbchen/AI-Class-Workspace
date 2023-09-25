@@ -61,7 +61,7 @@ genre_vocab = torchtext.vocab.build_vocab_from_iterator([genre_tokens], specials
 #genre_one_hot = nn.functional.one_hot(torch.tensor(genre_vocab.forward(genre_tokens)), num_classes=len(genre_vocab))
 
 # TODO: get genre_one_hot in with the rest of the numeric_data somehow
-#genre_one_hot = build_one_hot(genre_vocab, list(processed_data["Genre"].values))
+genre_one_hot = build_one_hot(genre_vocab, list(processed_data["Genre"].values))
 
 
 data_true = processed_data["Global_Sales"]
@@ -74,19 +74,23 @@ epochs = 1000
 
 #print(torch.nn.functional.one_hot(torch.tensor(df["Genre"].values), get_class_count(df["Genre"].values)))
 
+
+
 print("Start Training")
 for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
 
-    model = nn.Linear(3, 1)
+    model = nn.Linear(13, 1)
     loss = nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.0001)
     model.train()
     for epoch in range(epochs):
         optimizer.zero_grad()
 
+        epoch_input = torch.tensor(torch.index_select(genre_one_hot, 0, torch.tensor(train_indexes, dtype=torch.int32)), dtype=torch.float32)
+
 
         # https://pytorch.org/docs/stable/generated/torch.reshape.html#torch.reshape
-        y_pred = model(torch.tensor(numeric_data.iloc[train_indexes].values, dtype=torch.float32).unsqueeze(1))
+        y_pred = model(epoch_input)
         y_pred = torch.reshape(y_pred, (-1, ))
 
         y_true = torch.tensor(data_true.iloc[train_indexes].values, dtype=torch.float32)
@@ -99,7 +103,9 @@ for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
 
     print("-------- Fold", fold, "--------")
     model.eval()
-    y_pred = model(torch.tensor(numeric_data.iloc[test_indexes].values, dtype=torch.float32))
+
+    test_input = torch.tensor(torch.index_select(genre_one_hot, 0, torch.tensor(test_indexes, dtype=torch.int32)), dtype=torch.float32)
+    y_pred = model(torch.tensor(test_input, dtype=torch.float32))
     y_pred = torch.reshape(y_pred, (-1,))
 
     y_true = torch.tensor(data_true.iloc[test_indexes].values, dtype=torch.float32)
