@@ -50,15 +50,21 @@ genre_tokens = list(get_unique_items(df["Genre"].dropna().values))
 genre_vocab = torchtext.vocab.build_vocab_from_iterator([genre_tokens], specials=["<unk>"])
 genre_one_hot = build_one_hot(genre_vocab, list(processed_data["Genre"].values))
 
+publisher_tokens = list(get_unique_items(df["Publisher"].dropna().values))
+publisher_vocab = torchtext.vocab.build_vocab_from_iterator([publisher_tokens], specials=["<unk>"])
+publisher_one_hot = build_one_hot(publisher_vocab, list(processed_data["Publisher"].values))
+
 
 data_true = processed_data["Global_Sales"]
 numeric_data = processed_data[["Critic_Score", "Critic_Count", "User_Score"]]
 
+input_data = torch.cat([publisher_one_hot, torch.tensor(numeric_data.values), genre_one_hot], 1)
+print("Input sample:", input_data[0])
+
 kf = KFold(n_splits=5, shuffle=True)
 epochs = 2000
 
-input_data = torch.cat([torch.tensor(numeric_data.values), genre_one_hot], 1)
-print("Input sample:", input_data[0])
+fold_losses = []
 
 print("Start Training")
 for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
@@ -94,6 +100,10 @@ for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
 
     y_true = torch.tensor(data_true.iloc[test_indexes].values, dtype=torch.float32)
 
-    print("Loss:", loss(y_pred, y_true))
+    test_loss = loss(y_pred, y_true)
+    fold_losses.append(test_loss)
+    print("Loss:", test_loss)
     print()
 
+print("------------------------")
+print("Average Fold Loss:", torch.tensor(fold_losses).mean())
