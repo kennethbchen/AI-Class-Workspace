@@ -4,13 +4,6 @@ import torchtext
 import pandas as pd
 from sklearn.model_selection import KFold
 
-"""
-a = torch.tensor([1, 2, 3, 4])
-b = torch.tensor([5, 6, 7, 8])
-print(torch.cat([a, b]))
-exit()
-"""
-
 def get_unique_items(data):
 
     items = set()
@@ -26,14 +19,13 @@ def build_one_hot(vocab, keys):
     return nn.functional.one_hot(torch.tensor(vocab.forward(keys)), num_classes=len(vocab))
 
 
-
 """
     Data Processing On CSV: Remove "tbd" from User_Score / all rows
 """
 
 df = pd.read_csv("data/video_games_sales.csv")
 df["User_Score"] = df["User_Score"].astype(float)
-
+df["User_Count"] = df["User_Count"].astype(float)
 """
 Name: Tokenize?
 Platform: 
@@ -56,23 +48,14 @@ processed_data = df.dropna()
 
 genre_tokens = list(get_unique_items(df["Genre"].dropna().values))
 genre_vocab = torchtext.vocab.build_vocab_from_iterator([genre_tokens], specials=["<unk>"])
-
-#genre_one_hot = nn.functional.one_hot(torch.tensor(genre_vocab.forward(genre_tokens)), num_classes=len(genre_vocab))
-
-# TODO: get genre_one_hot in with the rest of the numeric_data somehow
 genre_one_hot = build_one_hot(genre_vocab, list(processed_data["Genre"].values))
 
 
 data_true = processed_data["Global_Sales"]
 numeric_data = processed_data[["Critic_Score", "Critic_Count", "User_Score"]]
 
-#print(torch.index_select(genre_one_hot, 0, torch.tensor([1, 2, 3, 4], dtype=torch.int32)))
-
 kf = KFold(n_splits=5, shuffle=True)
 epochs = 2000
-
-#print(torch.nn.functional.one_hot(torch.tensor(df["Genre"].values), get_class_count(df["Genre"].values)))
-
 
 input_data = torch.cat([torch.tensor(numeric_data.values), genre_one_hot], 1)
 print("Input sample:", input_data[0])
