@@ -86,7 +86,7 @@ for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
     for epoch in range(epochs):
         optimizer.zero_grad()
 
-        epoch_input = torch.tensor(torch.index_select(genre_one_hot, 0, torch.tensor(train_indexes, dtype=torch.int32)), dtype=torch.float32)
+        epoch_input = torch.index_select(genre_one_hot, 0, torch.tensor(train_indexes, dtype=torch.int32)).type(torch.float32)
 
 
         # https://pytorch.org/docs/stable/generated/torch.reshape.html#torch.reshape
@@ -104,8 +104,8 @@ for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
     print("-------- Fold", fold, "--------")
     model.eval()
 
-    test_input = torch.tensor(torch.index_select(genre_one_hot, 0, torch.tensor(test_indexes, dtype=torch.int32)), dtype=torch.float32)
-    y_pred = model(torch.tensor(test_input, dtype=torch.float32))
+    test_input = torch.index_select(genre_one_hot, 0, torch.tensor(test_indexes, dtype=torch.int32)).type(torch.float32)
+    y_pred = model(test_input)
     y_pred = torch.reshape(y_pred, (-1,))
 
     y_true = torch.tensor(data_true.iloc[test_indexes].values, dtype=torch.float32)
