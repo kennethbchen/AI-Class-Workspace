@@ -52,7 +52,6 @@ Predict: Global_Sales
 
 """
 
-
 processed_data = df.dropna()
 
 genre_tokens = list(get_unique_items(df["Genre"].dropna().values))
@@ -69,24 +68,26 @@ numeric_data = processed_data[["Critic_Score", "Critic_Count", "User_Score"]]
 
 #print(torch.index_select(genre_one_hot, 0, torch.tensor([1, 2, 3, 4], dtype=torch.int32)))
 
-kf = KFold(n_splits=5, shuffle=False)
-epochs = 1000
+kf = KFold(n_splits=5, shuffle=True)
+epochs = 2000
 
 #print(torch.nn.functional.one_hot(torch.tensor(df["Genre"].values), get_class_count(df["Genre"].values)))
 
 
+input_data = torch.cat([torch.tensor(numeric_data.values), genre_one_hot], 1)
+print("Input sample:", input_data[0])
 
 print("Start Training")
 for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
 
-    model = nn.Linear(13, 1)
+    model = nn.Linear(input_data.shape[1], 1)
     loss = nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.0001)
     model.train()
     for epoch in range(epochs):
         optimizer.zero_grad()
 
-        epoch_input = torch.index_select(genre_one_hot, 0, torch.tensor(train_indexes, dtype=torch.int32)).type(torch.float32)
+        epoch_input = torch.index_select(input_data, 0, torch.tensor(train_indexes, dtype=torch.int32)).type(torch.float32)
 
 
         # https://pytorch.org/docs/stable/generated/torch.reshape.html#torch.reshape
@@ -104,7 +105,7 @@ for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
     print("-------- Fold", fold, "--------")
     model.eval()
 
-    test_input = torch.index_select(genre_one_hot, 0, torch.tensor(test_indexes, dtype=torch.int32)).type(torch.float32)
+    test_input = torch.index_select(input_data, 0, torch.tensor(test_indexes, dtype=torch.int32)).type(torch.float32)
     y_pred = model(test_input)
     y_pred = torch.reshape(y_pred, (-1,))
 
