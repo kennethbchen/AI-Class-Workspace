@@ -3,6 +3,9 @@ import torch.nn as nn
 import torchtext
 import pandas as pd
 from sklearn.model_selection import KFold
+import spacy
+import os.path
+import csv
 
 def get_unique_items(data):
 
@@ -45,6 +48,37 @@ Predict: Global_Sales
 """
 
 processed_data = df.dropna()
+
+nlp = spacy.load("en_core_web_sm")
+
+name_tokens = set()
+
+# Tokenize names if it doesn't exist already
+if not os.path.exists("name_tokens.csv"):
+
+    # Get all tokens for name
+
+    for name in processed_data["Name"]:
+
+        doc = nlp(name)
+        for token in doc:
+            name_tokens.add(token.text)
+
+    with open('name_tokens.csv', 'w', newline='', encoding='utf-8') as file:
+        # Step 4: Using csv.writer to write the list to the CSV file
+        writer = csv.writer(file)
+        writer.writerow(list(name_tokens))  # Use writerow for single list
+else:
+    file = open("name_tokens.csv", "r")
+    tokens = list(csv.reader(file, delimiter=","))
+    file.close()
+    for token in tokens[0]:
+        name_tokens.add(token)
+
+
+print(name_tokens)
+
+exit()
 
 genre_tokens = list(get_unique_items(df["Genre"].dropna().values))
 genre_vocab = torchtext.vocab.build_vocab_from_iterator([genre_tokens], specials=["<unk>"])
