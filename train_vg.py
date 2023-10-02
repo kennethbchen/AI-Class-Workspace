@@ -6,6 +6,7 @@ from sklearn.model_selection import KFold
 import spacy
 import os.path
 import csv
+import codecs
 
 def get_unique_items(data):
 
@@ -60,8 +61,12 @@ if not os.path.exists("name_tokens.csv"):
 
     for name in processed_data["Name"]:
 
+        #print(name)
         doc = nlp(name)
         for token in doc:
+
+            #if token.text == "Pokemon":
+                #print(token.text)
             name_tokens.add(token.text)
 
     with open('name_tokens.csv', 'w', newline='', encoding='utf-8') as file:
@@ -69,7 +74,7 @@ if not os.path.exists("name_tokens.csv"):
         writer = csv.writer(file)
         writer.writerow(list(name_tokens))  # Use writerow for single list
 else:
-    file = open("name_tokens.csv", "r")
+    file = open("name_tokens.csv", "r", encoding='utf-8')
     tokens = list(csv.reader(file, delimiter=","))
     file.close()
     for token in tokens[0]:
@@ -77,6 +82,15 @@ else:
 
 
 print(name_tokens)
+
+name_vocab = torchtext.vocab.build_vocab_from_iterator([list(name_tokens)], specials=["<unk>"])
+
+for name in processed_data["Name"].values:
+    doc = nlp(name)
+
+    for token in doc:
+
+        print(name_vocab.forward([token.text]))
 
 exit()
 
