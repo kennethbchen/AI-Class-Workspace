@@ -10,21 +10,6 @@ import csv
 import codecs
 from util import read_csv_cached
 
-def get_unique_items(data):
-
-    items = set()
-    for item in data:
-        items.add(item)
-
-    return items
-
-# https://stackoverflow.com/questions/71146270/one-hot-encoding-text-data-in-pytorch
-def build_one_hot(vocab, keys):
-    if isinstance(keys, str):
-        keys = [keys]
-    return nn.functional.one_hot(torch.tensor(vocab.forward(keys)), num_classes=len(vocab))
-
-
 """
     Data Processing On CSV: Remove "tbd" from User_Score / all rows
 """
@@ -32,6 +17,7 @@ def build_one_hot(vocab, keys):
 df = pd.read_csv("data/video_games_sales.csv")
 df["User_Score"] = df["User_Score"].astype(float)
 df["User_Count"] = df["User_Count"].astype(float)
+
 """
 Name: Tokenize?
 Platform: 
@@ -76,17 +62,6 @@ for name in processed_data["Name"].values:
     for token in doc:
 
         print(name_vocab.forward([token.text]))
-"""
-
-
-"""
-genre_tokens = list(get_unique_items(df["Genre"].dropna().values))
-genre_vocab = torchtext.vocab.build_vocab_from_iterator([genre_tokens], specials=["<unk>"])
-genre_one_hot = build_one_hot(genre_vocab, list(processed_data["Genre"].values))
-
-publisher_tokens = list(get_unique_items(df["Publisher"].dropna().values))
-publisher_vocab = torchtext.vocab.build_vocab_from_iterator([publisher_tokens], specials=["<unk>"])
-publisher_one_hot = build_one_hot(publisher_vocab, list(processed_data["Publisher"].values))
 """
 
 data_true = processed_data["Global_Sales"]
