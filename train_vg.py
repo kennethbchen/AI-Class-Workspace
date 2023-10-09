@@ -7,6 +7,7 @@ import spacy
 import os.path
 import csv
 import codecs
+from util import read_csv_cached
 
 def get_unique_items(data):
 
@@ -52,38 +53,20 @@ processed_data = df.dropna()
 
 nlp = spacy.load("en_core_web_sm")
 
-name_tokens = set()
-
-# Tokenize names if it doesn't exist already
-if not os.path.exists("name_tokens.csv"):
-
-    # Get all tokens for name
+def read_name_tokens():
+    output = set()
 
     for name in processed_data["Name"]:
 
-        #print(name)
         doc = nlp(name)
         for token in doc:
+            output.add(token.text)
 
-            #if token.text == "Pokemon":
-                #print(token.text)
-            name_tokens.add(token.text)
+    return output
 
-    with open('name_tokens.csv', 'w', newline='', encoding='utf-8') as file:
-        # Step 4: Using csv.writer to write the list to the CSV file
-        writer = csv.writer(file)
-        writer.writerow(list(name_tokens))  # Use writerow for single list
-else:
-    file = open("name_tokens.csv", "r", encoding='utf-8')
-    tokens = list(csv.reader(file, delimiter=","))
-    file.close()
-    for token in tokens[0]:
-        name_tokens.add(token)
+name_token_data = read_csv_cached("name_tokens.csv", read_name_tokens, True)
 
-
-print(name_tokens)
-
-name_vocab = torchtext.vocab.build_vocab_from_iterator([list(name_tokens)], specials=["<unk>"])
+name_vocab = torchtext.vocab.build_vocab_from_iterator(list(name_token_data), specials=["<unk>"])
 
 for name in processed_data["Name"].values:
     doc = nlp(name)
