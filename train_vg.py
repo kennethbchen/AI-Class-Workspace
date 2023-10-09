@@ -1,3 +1,4 @@
+import pandas
 import torch
 import torch.nn as nn
 import torchtext
@@ -53,6 +54,7 @@ processed_data = df.dropna()
 
 nlp = spacy.load("en_core_web_sm")
 
+"""
 def read_name_tokens():
     output = set()
 
@@ -74,9 +76,10 @@ for name in processed_data["Name"].values:
     for token in doc:
 
         print(name_vocab.forward([token.text]))
+"""
 
-exit()
 
+"""
 genre_tokens = list(get_unique_items(df["Genre"].dropna().values))
 genre_vocab = torchtext.vocab.build_vocab_from_iterator([genre_tokens], specials=["<unk>"])
 genre_one_hot = build_one_hot(genre_vocab, list(processed_data["Genre"].values))
@@ -84,12 +87,13 @@ genre_one_hot = build_one_hot(genre_vocab, list(processed_data["Genre"].values))
 publisher_tokens = list(get_unique_items(df["Publisher"].dropna().values))
 publisher_vocab = torchtext.vocab.build_vocab_from_iterator([publisher_tokens], specials=["<unk>"])
 publisher_one_hot = build_one_hot(publisher_vocab, list(processed_data["Publisher"].values))
-
+"""
 
 data_true = processed_data["Global_Sales"]
 numeric_data = processed_data[["Critic_Score", "Critic_Count", "User_Score"]]
+one_hot_dummies_data = pandas.get_dummies(processed_data[["Platform", "Genre"]], prefix=["Platform", "Genre"])
 
-input_data = torch.cat([publisher_one_hot, torch.tensor(numeric_data.values), genre_one_hot], 1)
+input_data = torch.cat([torch.tensor(one_hot_dummies_data.values), torch.tensor(numeric_data.values)], 1)
 print("Input sample:", input_data[0])
 
 kf = KFold(n_splits=5, shuffle=True)
