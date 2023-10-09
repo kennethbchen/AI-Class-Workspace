@@ -5,6 +5,12 @@ import csv
 def read_csv_cached(file_path: PathLike, read_func: Callable, force_regenerate = False):
 
     if not path.exists(file_path) or force_regenerate:
+
+        if force_regenerate:
+            print("Force Regenerating", file_path)
+        else:
+            print("Creating", file_path)
+
         with open(file_path, 'w', newline='\n', encoding='utf-8') as file:
             writer = csv.writer(file)
 
@@ -15,9 +21,7 @@ def read_csv_cached(file_path: PathLike, read_func: Callable, force_regenerate =
                 else:
                     writer.writerow(list(row))
 
-
-
-
+    print("Reading", file_path)
     file = open(file_path, "r", encoding='utf-8')
     data = list(csv.reader(file, delimiter=","))
     file.close()

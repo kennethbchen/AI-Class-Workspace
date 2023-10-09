@@ -41,64 +41,48 @@ Predict: Global_Sales
 
 processed_data = df.dropna()
 
+def read_word_embeddings():
+    print("Loading word-embedding related data")
+    nlp = spacy.load("en_core_web_sm")
+    word_vectors = KeyedVectors.load_word2vec_format("ignore/GoogleNews-vectors-negative300.bin", binary=True)
 
-def read_name_tokens():
-    output = set()
+    name_embeddings = []
 
-    for name in processed_data["Name"]:
-
+    print("Creating name embeddings")
+    max_len = 3
+    for name in processed_data["Name"].values:
         doc = nlp(name)
+        embeddings = []
+
+
         for token in doc:
-            output.add(token.text)
+            if token.text in word_vectors:
+                embeddings.append(word_vectors[token.text])
+            else:
+                # Not found, pad zeroes
+                embeddings.append(np.zeros((300,)))
 
-    return output
+        # Resize embeddings if needed
+        if len(embeddings) < max_len:
+            padding = [np.zeros((300,)) for _ in range(max_len - len(embeddings))]
+            embeddings = padding + embeddings
+        elif len(embeddings) > max_len:
+            embeddings = embeddings[:max_len]
 
+        # Flatten embeddings
+        embeddings = [item for sublist in embeddings for item in sublist]
+        name_embeddings.append(embeddings)
 
-
-#name_token_data = read_csv_cached("name_tokens.csv", read_name_tokens, True)
-# name_vocab = torchtext.vocab.build_vocab_from_iterator(list(name_token_data), specials=["<unk>"])
-
-print("Loading word-embedding related data")
-nlp = spacy.load("en_core_web_sm")
-word_vectors = KeyedVectors.load_word2vec_format("ignore/GoogleNews-vectors-negative300.bin", binary=True)
-
-name_embeddings = []
-
-print("Creating name embeddings")
-max_len = 3
-for name in processed_data["Name"].values:
-    doc = nlp(name)
-    embeddings = []
-
-
-    for token in doc:
-        if token.text in word_vectors:
-            embeddings.append(word_vectors[token.text])
-        else:
-            # Not found, pad zeroes
-            embeddings.append(np.zeros((300,)))
-
-    # Resize embeddings if needed
-    if len(embeddings) < max_len:
-        padding = [np.zeros((300,)) for _ in range(max_len - len(embeddings))]
-        embeddings = padding + embeddings
-    elif len(embeddings) > max_len:
-        embeddings = embeddings[:max_len]
-
-    # Flatten embeddings
-    embeddings = [item for sublist in embeddings for item in sublist]
-    name_embeddings.append(embeddings)
-
-
-print(name_embeddings[0])
-exit()
+    return name_embeddings
 
 data_true = processed_data["Global_Sales"]
 numeric_data = processed_data[["Critic_Score", "Critic_Count", "User_Score"]]
 one_hot_dummies_data = pandas.get_dummies(processed_data[["Platform", "Genre"]], prefix=["Platform", "Genre"])
+name_embeddings = np.array(read_csv_cached("ignore/cached_data/name_embeddings.csv", read_word_embeddings)).astype(float)
 
-input_data = torch.cat([torch.tensor(one_hot_dummies_data.values), torch.tensor(numeric_data.values)], 1)
+input_data = torch.cat([torch.tensor(name_embeddings), torch.tensor(one_hot_dummies_data.values), torch.tensor(numeric_data.values)], 1)
 print("Input size:", len(input_data), "rows")
+print("Row size:", len(input_data[0]), "values")
 print("Input sample:", input_data[0])
 
 kf = KFold(n_splits=5, shuffle=True)
@@ -117,7 +101,6 @@ for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
         optimizer.zero_grad()
 
         epoch_input = torch.index_select(input_data, 0, torch.tensor(train_indexes, dtype=torch.int32)).type(torch.float32)
-
 
         # https://pytorch.org/docs/stable/generated/torch.reshape.html#torch.reshape
         y_pred = model(epoch_input)
