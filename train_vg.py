@@ -86,7 +86,7 @@ else:
 
 data_true = processed_data["Global_Sales"]
 
-numeric_data = processed_data[["Critic_Score", "Critic_Count", "User_Score"]]
+numeric_data = processed_data[["Critic_Score", "Critic_Count", "User_Score", "User_Count"]]
 # Normalize
 numeric_data = ( (numeric_data - numeric_data.mean()) / numeric_data.std() )
 
@@ -101,7 +101,7 @@ print("Input size:", input_size, "values")
 print("Input sample:", input_data[0])
 
 kf = KFold(n_splits=5, shuffle=True)
-epochs = 2000
+epochs = 4000
 
 fold_losses = []
 
@@ -110,19 +110,16 @@ for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
 
 
     model = nn.Sequential(
-        nn.Linear(input_size, 100),
+        nn.Linear(input_size, 200), # Input Layer
         nn.ReLU(),
-        nn.Linear(100, 100),
+        nn.Linear(200, 200),
         nn.ReLU(),
-        nn.Linear(100, 100),
-        nn.ReLU(),
-        nn.Linear(100, 100),
-        nn.ReLU(),
-        nn.Linear(100, 1)
+        nn.Linear(200, 1), # Output Layer
+        nn.ReLU()
     ).to(device)
 
     loss = nn.MSELoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.009)
     model.train()
     for epoch in range(epochs):
         optimizer.zero_grad()
