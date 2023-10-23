@@ -103,7 +103,7 @@ print("Input sample:", input_data[0])
 kf = KFold(n_splits=5, shuffle=True)
 epochs = 1000
 
-fold_losses = []
+test_losses = []
 
 print("Start Training")
 for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
@@ -118,7 +118,7 @@ for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
     loss = nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.009)
 
-    epoch_input = torch.index_select(input_data, 0, torch.tensor(train_indexes, dtype=torch.int32).to(device)).type(
+    train_input = torch.index_select(input_data, 0, torch.tensor(train_indexes, dtype=torch.int32).to(device)).type(
         torch.float32)
 
     test_input = torch.index_select(input_data, 0, torch.tensor(test_indexes, dtype=torch.int32).to(device)).type(
@@ -126,12 +126,14 @@ for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
 
 
     for epoch in range(epochs):
+
+        # Train Epoch
         model.train()
 
         optimizer.zero_grad()
 
         # https://pytorch.org/docs/stable/generated/torch.reshape.html#torch.reshape
-        train_pred = model(epoch_input)
+        train_pred = model(train_input)
         train_pred = torch.reshape(train_pred, (-1, ))
 
         train_true = torch.tensor(data_true.iloc[train_indexes].values, dtype=torch.float32).to(device)
@@ -149,10 +151,10 @@ for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
         test_true = torch.tensor(data_true.iloc[test_indexes].values, dtype=torch.float32).to(device)
 
         test_loss = loss(test_pred, test_true)
-        fold_losses.append(test_loss)
+        test_losses.append(test_loss)
 
         print("Fold", fold, "Epoch", epoch, "Train Loss:", epoch_loss.item(), "Test Loss:", test_loss.item())
 
 
 print("------------------------")
-print("Average Fold Loss:", torch.tensor(fold_losses).mean())
+print("Average Test Loss:", torch.tensor(test_losses).mean())
