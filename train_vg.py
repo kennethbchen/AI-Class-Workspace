@@ -101,56 +101,58 @@ print("Input size:", input_size, "values")
 print("Input sample:", input_data[0])
 
 kf = KFold(n_splits=5, shuffle=True)
-epochs = 4000
+epochs = 1000
 
 fold_losses = []
 
 print("Start Training")
 for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
 
-
     model = nn.Sequential(
-        nn.Linear(input_size, 200), # Input Layer
+        nn.Linear(input_size, 5), # Input Layer
         nn.ReLU(),
-        nn.Linear(200, 200),
-        nn.ReLU(),
-        nn.Linear(200, 1), # Output Layer
+        nn.Linear(5, 1), # Output Layer
         nn.ReLU()
     ).to(device)
 
     loss = nn.MSELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.009)
-    model.train()
+
+    epoch_input = torch.index_select(input_data, 0, torch.tensor(train_indexes, dtype=torch.int32).to(device)).type(
+        torch.float32)
+
+    test_input = torch.index_select(input_data, 0, torch.tensor(test_indexes, dtype=torch.int32).to(device)).type(
+        torch.float32).to(device)
+
+
     for epoch in range(epochs):
+        model.train()
+
         optimizer.zero_grad()
 
-        epoch_input = torch.index_select(input_data, 0, torch.tensor(train_indexes, dtype=torch.int32).to(device)).type(torch.float32)
-
         # https://pytorch.org/docs/stable/generated/torch.reshape.html#torch.reshape
-        y_pred = model(epoch_input)
-        y_pred = torch.reshape(y_pred, (-1, ))
+        train_pred = model(epoch_input)
+        train_pred = torch.reshape(train_pred, (-1, ))
 
-        y_true = torch.tensor(data_true.iloc[train_indexes].values, dtype=torch.float32).to(device)
+        train_true = torch.tensor(data_true.iloc[train_indexes].values, dtype=torch.float32).to(device)
 
-        epoch_loss = loss(y_pred, y_true)
-
-
+        epoch_loss = loss(train_pred, train_true)
         epoch_loss.backward()  # Backwards Propagation
         optimizer.step()
 
-    print("-------- Fold", fold, "--------")
-    model.eval()
+        # Evaluate epoch
+        model.eval()
 
-    test_input = torch.index_select(input_data, 0, torch.tensor(test_indexes, dtype=torch.int32).to(device)).type(torch.float32).to(device)
-    y_pred = model(test_input)
-    y_pred = torch.reshape(y_pred, (-1,))
+        test_pred = model(test_input)
+        test_pred = torch.reshape(test_pred, (-1,))
 
-    y_true = torch.tensor(data_true.iloc[test_indexes].values, dtype=torch.float32).to(device)
+        test_true = torch.tensor(data_true.iloc[test_indexes].values, dtype=torch.float32).to(device)
 
-    test_loss = loss(y_pred, y_true)
-    fold_losses.append(test_loss)
-    print("Loss:", test_loss)
-    print()
+        test_loss = loss(test_pred, test_true)
+        fold_losses.append(test_loss)
+
+        print("Fold", fold, "Epoch", epoch, "Train Loss:", epoch_loss.item(), "Test Loss:", test_loss.item())
+
 
 print("------------------------")
 print("Average Fold Loss:", torch.tensor(fold_losses).mean())
