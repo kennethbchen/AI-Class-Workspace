@@ -11,6 +11,8 @@ import csv
 import codecs
 from util import read_csv_cached
 from gensim.models import KeyedVectors
+import matplotlib.pyplot as plt
+import itertools
 
 """
     Data Processing On CSV: Remove "tbd" from User_Score / all rows
@@ -19,25 +21,6 @@ from gensim.models import KeyedVectors
 df = pd.read_csv("data/video_games_sales.csv")
 df["User_Score"] = df["User_Score"].astype(float)
 df["User_Count"] = df["User_Count"].astype(float)
-
-"""
-Name: Tokenize?
-Platform: 
-Year_of_Release
-Genre: Tokenize
-Publisher: Tokenize
-
-Critic_Score
-Critic_Count
-User_Score
-User_Count
-
-Developer Rating
-
-Predict: Global_Sales
-
-"""
-
 
 processed_data = df.dropna()
 
@@ -101,22 +84,24 @@ print("Input size:", input_size, "values")
 print("Input sample:", input_data[0])
 
 kf = KFold(n_splits=5, shuffle=True)
-epochs = 1000
+epochs = 2000
 
+train_losses = []
 test_losses = []
 
 print("Start Training")
 for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
 
+    print("Fold", fold, end=" ")
+
     model = nn.Sequential(
-        nn.Linear(input_size, 5), # Input Layer
+        nn.Linear(input_size, 20), # Input Layer
         nn.ReLU(),
-        nn.Linear(5, 1), # Output Layer
-        nn.ReLU()
+        nn.Linear(20, 1), # Output Layer
     ).to(device)
 
     loss = nn.MSELoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.009)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.005)
 
     train_input = torch.index_select(input_data, 0, torch.tensor(train_indexes, dtype=torch.int32).to(device)).type(
         torch.float32)
@@ -138,11 +123,14 @@ for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
 
         train_true = torch.tensor(data_true.iloc[train_indexes].values, dtype=torch.float32).to(device)
 
-        epoch_loss = loss(train_pred, train_true)
-        epoch_loss.backward()  # Backwards Propagation
+        train_loss = loss(train_pred, train_true)
+
+        train_losses.append(train_loss.item())
+
+        train_loss.backward()  # Backwards Propagation
         optimizer.step()
 
-        # Evaluate epoch
+        # Evaluate Epoch
         model.eval()
 
         test_pred = model(test_input)
@@ -151,10 +139,18 @@ for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
         test_true = torch.tensor(data_true.iloc[test_indexes].values, dtype=torch.float32).to(device)
 
         test_loss = loss(test_pred, test_true)
-        test_losses.append(test_loss)
+        test_losses.append(test_loss.item())
 
-        print("Fold", fold, "Epoch", epoch, "Train Loss:", epoch_loss.item(), "Test Loss:", test_loss.item())
+        #print("Epoch", epoch, "Train Loss:", train_loss.item(), "Test Loss:", test_loss.item())
+
+    print()
 
 
 print("------------------------")
 print("Average Test Loss:", torch.tensor(test_losses).mean())
+
+
+plt.plot(train_losses, label="Train Loss")
+plt.plot(test_losses, label="Test Loss")
+plt.legend()
+plt.show()
