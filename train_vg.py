@@ -22,7 +22,7 @@ df = pd.read_csv("data/video_games_sales.csv")
 df["User_Score"] = df["User_Score"].astype(float)
 df["User_Count"] = df["User_Count"].astype(float)
 
-processed_data = df.dropna()
+processed_data = df[["Name", "Platform", "Genre", "Publisher", "Global_Sales"]].dropna()
 
 def read_word_embeddings():
     print("Loading word-embedding related data")
@@ -69,14 +69,16 @@ else:
 
 data_true = processed_data["Global_Sales"]
 
-numeric_data = processed_data[["Critic_Score", "Critic_Count", "User_Score", "User_Count"]]
+"""
+numeric_data = processed_data[["Critic_Score"]]
 # Normalize
 numeric_data = ( (numeric_data - numeric_data.mean()) / numeric_data.std() )
+"""
 
-one_hot_dummies_data = pandas.get_dummies(processed_data[["Platform", "Genre"]], prefix=["Platform", "Genre"])
+one_hot_dummies_data = pandas.get_dummies(processed_data[["Genre", "Publisher", "Platform"]], prefix=["Genre", "Publisher", "Platform"])
 name_embeddings = np.array(read_csv_cached("ignore/cached_data/name_embeddings.csv", read_word_embeddings)).astype(float)
 
-input_data = torch.cat([torch.tensor(name_embeddings), torch.tensor(one_hot_dummies_data.values), torch.tensor(numeric_data.values)], 1).to(device)
+input_data = torch.cat([torch.tensor(name_embeddings), torch.tensor(one_hot_dummies_data.values)], 1).to(device)
 input_size = input_data.shape[1]
 
 print("Dataset size:", len(input_data), "rows")
@@ -84,27 +86,29 @@ print("Input size:", input_size, "values")
 print("Input sample:", input_data[0])
 
 kf = KFold(n_splits=5, shuffle=True)
-epochs = 2000
+epochs = 200
 
 train_losses = []
 test_losses = []
 
 print("Start Training")
-for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
+for fold, (train_indexes, test_indexes) in enumerate(kf.split(input_data)):
 
     print("Fold", fold, end=" ")
 
     model = nn.Sequential(
-        nn.Linear(input_size, 20), # Input Layer
+        nn.Linear(input_size, 200), # Input Layer
         nn.ReLU(),
-        nn.Linear(20, 1), # Output Layer
+        nn.Linear(200, 200),
+        nn.ReLU(),
+        nn.Linear(200, 1), # Output Layer
     ).to(device)
 
     loss = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.005)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     train_input = torch.index_select(input_data, 0, torch.tensor(train_indexes, dtype=torch.int32).to(device)).type(
-        torch.float32)
+        torch.float32).to(device)
 
     test_input = torch.index_select(input_data, 0, torch.tensor(test_indexes, dtype=torch.int32).to(device)).type(
         torch.float32).to(device)
@@ -147,6 +151,7 @@ for fold, (train_indexes, test_indexes) in enumerate(kf.split(numeric_data)):
 
 
 print("------------------------")
+print("Average Train Loss:", torch.tensor(train_losses).mean())
 print("Average Test Loss:", torch.tensor(test_losses).mean())
 
 
