@@ -91,6 +91,9 @@ epochs = 200
 train_losses = []
 test_losses = []
 
+fold_predictions = []
+fold_true = []
+
 print("Start Training")
 for fold, (train_indexes, test_indexes) in enumerate(kf.split(input_data)):
 
@@ -110,9 +113,13 @@ for fold, (train_indexes, test_indexes) in enumerate(kf.split(input_data)):
     train_input = torch.index_select(input_data, 0, torch.tensor(train_indexes, dtype=torch.int32).to(device)).type(
         torch.float32).to(device)
 
+    train_true = torch.tensor(data_true.iloc[train_indexes].values, dtype=torch.float32).to(device)
+
+
     test_input = torch.index_select(input_data, 0, torch.tensor(test_indexes, dtype=torch.int32).to(device)).type(
         torch.float32).to(device)
 
+    test_true = torch.tensor(data_true.iloc[test_indexes].values, dtype=torch.float32).to(device)
 
     for epoch in range(epochs):
 
@@ -125,7 +132,7 @@ for fold, (train_indexes, test_indexes) in enumerate(kf.split(input_data)):
         train_pred = model(train_input)
         train_pred = torch.reshape(train_pred, (-1, ))
 
-        train_true = torch.tensor(data_true.iloc[train_indexes].values, dtype=torch.float32).to(device)
+
 
         train_loss = loss(train_pred, train_true)
 
@@ -140,12 +147,22 @@ for fold, (train_indexes, test_indexes) in enumerate(kf.split(input_data)):
         test_pred = model(test_input)
         test_pred = torch.reshape(test_pred, (-1,))
 
-        test_true = torch.tensor(data_true.iloc[test_indexes].values, dtype=torch.float32).to(device)
 
         test_loss = loss(test_pred, test_true)
         test_losses.append(test_loss.item())
 
         #print("Epoch", epoch, "Train Loss:", train_loss.item(), "Test Loss:", test_loss.item())
+
+
+
+    # Do final prediction
+    model.eval()
+    test_pred = model(test_input)
+
+    fold_predictions.extend(test_pred.cpu().detach().numpy().flatten())
+    fold_true.extend(test_true.cpu().detach().numpy().flatten())
+
+
 
     print()
 
@@ -154,6 +171,9 @@ print("------------------------")
 print("Average Train Loss:", torch.tensor(train_losses).mean())
 print("Average Test Loss:", torch.tensor(test_losses).mean())
 
+pred_df = pandas.DataFrame({"Prediction":fold_predictions, "Actual":fold_true})
+pred_df["Difference"] = pred_df["Actual"] - pred_df["Prediction"]
+print("Root Mean Square Error:", pred_df["Difference"].pow(2).mean() ** 0.5, "million sales")
 
 plt.plot(train_losses, label="Train Loss")
 plt.plot(test_losses, label="Test Loss")
