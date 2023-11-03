@@ -3,16 +3,31 @@ import torch
 import numpy as np
 import sys
 
-tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+tokenizer = GPT2Tokenizer.from_pretrained("EleutherAI/gpt-neo-125M")
 
 # https://github.com/joshuaeckroth/csci431-gpt2
 
-msg = "Today is my"
+rev = input("Type your review: ")
 
-model = AutoModelForCausalLM.from_pretrained("gpt2")
+msg = \
+"""
+Review: Works really well.
+Sentiment: Positive
+
+Review: I hate this.
+Sentiment: Negative
+
+Review: """
+
+msg += rev + "\n"
+msg += "Sentiment: "
+
+print(msg)
+
+model = AutoModelForCausalLM.from_pretrained("EleutherAI/gpt-neo-125M")
 
 i = 0
-while i < 5:
+while i < 3:
     i += 1
     inputs = tokenizer([msg], return_tensors="pt")
     outputs = model.forward(**inputs, labels=inputs.input_ids)
